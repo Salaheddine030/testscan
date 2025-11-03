@@ -3,36 +3,78 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Barcode Scanner — iPhone (Live + Fallback)</title>
+<title>Barcode Scanner — iPhone Focus + Beep + Notifies</title>
+<meta name="robots" content="noindex,nofollow" />
 <script src="https://unpkg.com/@zxing/library@0.20.0"></script>
 <style>
-  :root{--brand:#0d6efd;--brand-dark:#0a58ca;--bg:#f5f6f8;--ink:#1f2328;--muted:#6c757d;}
+  :root{
+    --brand:#0d6efd; --brand-dark:#0a58ca; --bg:#f5f6f8; --ink:#1f2328;
+    --muted:#6c757d; --ok:#16a34a; --ok-dark:#0e7a36;
+  }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);
-       font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Arial,sans-serif;}
-  header{background:var(--brand);color:#fff;padding:18px 20px;font-weight:700;font-size:22px;text-align:center;
-         box-shadow:0 2px 10px rgba(0,0,0,.12)}
-  main{width:min(900px,96vw);margin:20px auto;padding:16px;background:#fff;border-radius:16px;
-       box-shadow:0 6px 24px rgba(0,0,0,.08)}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-  select,button,input[type="file"]{border:1px solid #d0d7de;border-radius:12px;padding:12px 14px;font-size:16px;background:#fff;color:var(--ink)}
-  button{background:var(--brand);color:#fff;border:none;cursor:pointer;transition:.15s transform ease,.15s background-color ease}
-  button:hover{background:var(--brand-dark)} button:active{transform:translateY(1px)}
-  button.secondary{background:#fff;color:var(--ink);border:1px solid #d0d7de}
-  button.secondary:hover{background:#f3f4f6}
-  button.ghost{background:#fff;color:var(--ink);border:1px dashed #c8d0d8}
-  video{width:100%;aspect-ratio:3/4;background:#000;border-radius:16px;border:2px solid #e9ecef}
-  .hint{color:var(--muted);font-size:14px;margin:8px 0 4px}
-  textarea{width:100%;height:280px;margin-top:8px;padding:12px;font-size:16px;border:1px solid #d0d7de;border-radius:12px;resize:vertical}
-  footer{margin:14px 0 28px;color:var(--muted);font-size:14px;text-align:center}
-  .badge{display:inline-flex;align-items:center;gap:6px;background:#eef2ff;color:#3146b5;padding:6px 10px;border-radius:999px;
-         font-size:13px;border:1px solid #dfe6ff}
-  .warn{color:#b00020}
-  .hidden{display:none}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Arial,sans-serif;
+  }
+  header{
+    background:var(--brand); color:#fff; padding:16px 20px; font-weight:700; font-size:20px;
+    text-align:center; box-shadow:0 2px 10px rgba(0,0,0,.12)
+  }
+  main{
+    width:min(900px,96vw); margin:18px auto; padding:16px; background:#fff; border-radius:16px;
+    box-shadow:0 6px 24px rgba(0,0,0,.08)
+  }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px }
+  select,button{
+    border:1px solid #d0d7de; border-radius:12px; padding:10px 12px; font-size:16px; background:#fff; color:var(--ink)
+  }
+  button{
+    background:var(--brand); color:#fff; border:none; cursor:pointer;
+    transition:.15s transform ease,.15s background-color ease
+  }
+  button:hover{ background:var(--brand-dark) }
+  button:active{ transform:translateY(1px) }
+  button.secondary{ background:#fff; color:var(--ink); border:1px solid #d0d7de }
+  button.secondary:hover{ background:#f3f4f6 }
+  button.ghost{ background:#fff; color:var(--ink); border:1px dashed #c8d0d8 }
+  .badge{ display:inline-flex; align-items:center; gap:6px; background:#eef2ff; color:#3146b5;
+    padding:6px 10px; border-radius:999px; font-size:13px; border:1px solid #dfe6ff }
+
+  /* Cameravak: compacter en strak */
+  .camera-wrap{
+    width:100%; display:flex; justify-content:center; margin-top:6px;
+  }
+  video{
+    width:100%;
+    max-width:420px;           /* <<< kleiner cameravak */
+    aspect-ratio:3/4;
+    background:#000; border-radius:14px; border:2px solid #e9ecef;
+  }
+
+  .hint{ color:var(--muted); font-size:14px; margin:10px 0 6px }
+  textarea{
+    width:100%; height:260px; padding:12px; font-size:16px; border:1px solid #d0d7de;
+    border-radius:12px; resize:vertical
+  }
+  .warn{ color:#b00020; margin:6px 0 }
+  .hidden{ display:none }
+
+  /* Groene toast rechtsboven */
+  .toast{
+    position:fixed; right:14px; top:14px; z-index:9999; display:flex; flex-direction:column; gap:8px;
+  }
+  .toast .item{
+    background:var(--ok); color:#fff; padding:10px 12px; border-radius:12px;
+    box-shadow:0 6px 18px rgba(0,0,0,.12); transform:translateY(-8px); opacity:0;
+    animation:slideIn .18s ease-out forwards;
+  }
+  @keyframes slideIn{
+    to{ transform:translateY(0); opacity:1 }
+  }
 </style>
 </head>
 <body>
-<header>📸 Barcode Scanner — iPhone (Live + Fallback)</header>
+<header>📸 Barcode Scanner — Focus + Beep + Notifies</header>
 
 <main>
   <div class="row">
@@ -43,22 +85,18 @@
     <span class="badge" id="statusBadge">⏸️ Camera uit</span>
   </div>
 
-  <div class="row">
+  <div id="secureNote" class="warn" style="display:none;">
+    ⚠️ iPhone blokkeert camera/geluid op onbeveiligde pagina’s. Open via <b>https</b>.
+  </div>
+
+  <div class="camera-wrap">
+    <video id="preview" autoplay playsinline muted></video>
+  </div>
+
+  <div class="row" style="margin-top:10px;">
     <button id="copyBtn" class="secondary">📋 Alles kopiëren</button>
     <button id="clearBtn" class="ghost">🧹 Wis alles</button>
-    <!-- Fallback: foto-scan -->
-    <label class="secondary" for="fileInput" style="cursor:pointer;">🖼️ Scan via foto</label>
-    <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden" />
   </div>
-
-  <div id="secureNote" class="warn" style="display:none;margin-bottom:8px;">
-    ⚠️ iPhone blokkeert camera/geluid op onbeveiligde pagina’s. Open via <b>https</b> of <b>http://localhost</b>.
-  </div>
-  <div id="permNote" class="warn" style="display:none;margin-bottom:8px;">
-    ⚠️ Camera-toestemming is geweigerd. Ga naar <b>Instellingen → (Safari/Chrome) → Camera → Toestaan</b> en herlaad.
-  </div>
-
-  <video id="preview" autoplay playsinline muted></video>
 
   <div class="hint">Gescannde codes (elke scan komt direct op een nieuwe regel):</div>
   <textarea id="output" readonly placeholder="Voorbeeld:
@@ -67,12 +105,15 @@
 7663996188"></textarea>
 </main>
 
-<footer>Gemaakt door Salaheddine ©</footer>
+<!-- Scan-notificaties -->
+<div class="toast" id="toast"></div>
 
 <script>
+/* ====== Secure context check ====== */
 const isSecure = location.protocol === 'https:' || ['localhost','127.0.0.1'].includes(location.hostname);
 document.getElementById('secureNote').style.display = isSecure ? 'none' : 'block';
 
+/* ====== ZXing setup (alle gewenste formaten) ====== */
 const formats = [
   ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
   ZXing.BarcodeFormat.CODE_93, ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
@@ -84,6 +125,7 @@ const hints = new Map();
 hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
 const reader = new ZXing.BrowserMultiFormatReader(hints);
 
+/* ====== UI refs ====== */
 const videoEl = document.getElementById('preview');
 const outputEl = document.getElementById('output');
 const startStopBtn = document.getElementById('startStopBtn');
@@ -93,14 +135,15 @@ const copyBtn = document.getElementById('copyBtn');
 const clearBtn = document.getElementById('clearBtn');
 const cameraSelect = document.getElementById('cameraSelect');
 const statusBadge = document.getElementById('statusBadge');
-const fileInput = document.getElementById('fileInput');
+const toast = document.getElementById('toast');
 
+/* ====== State ====== */
 let scanning = false;
 let currentDeviceId = null;
 let activeTrack = null;
 let torchOn = false;
 
-/* ===== Beep ===== */
+/* ====== Beep (kort, “scanner” achtig) ====== */
 let audioCtx = null, canBeep = false;
 function initAudio(){
   try{
@@ -111,36 +154,41 @@ function initAudio(){
 }
 function beep(){
   if (!canBeep || !audioCtx) return;
-  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-  o.type = 'sine'; o.frequency.setValueAtTime(1100, audioCtx.currentTime);
-  g.gain.setValueAtTime(0.001, audioCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.25, audioCtx.currentTime + 0.01);
-  o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.06);
+  const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(1250, audioCtx.currentTime);
+  gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.35, audioCtx.currentTime + 0.01);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.08);
 }
 
-/* ===== Helpers ===== */
+/* ====== Notify (groene toast) ====== */
+function notifyOK(msg){
+  const el = document.createElement('div');
+  el.className = 'item';
+  el.textContent = msg;
+  toast.appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity .2s ease, transform .2s ease';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-8px)';
+    setTimeout(() => toast.removeChild(el), 220);
+  }, 1200);
+}
+
+/* ====== Helpers ====== */
 function setStatus(text, emoji='ℹ️'){ statusBadge.textContent = `${emoji} ${text}`; }
 function stopTracks(stream){ if (stream) stream.getTracks().forEach(t=>t.stop()); }
 
-/* ===== Permissie-status tonen (indien ondersteund) ===== */
-async function showPermissionStatus(){
-  const permNote = document.getElementById('permNote');
-  permNote.style.display = 'none';
-  try{
-    if (!('permissions' in navigator)) return;
-    const st = await navigator.permissions.query({ name:'camera' });
-    if (st.state === 'denied') permNote.style.display = 'block';
-    // als 'prompt' of 'granted', laten we het aan de start-knop over
-  }catch(_){}
-}
-
-/* ===== Camera’s ophalen + achtercamera prefereren ===== */
+/* ====== Camera’s ophalen + achtercamera prefereren ====== */
 async function populateCameras(preferBack = true){
-  try{
-    // vraag 1x access zodat iOS labels vrijgeeft
+  // vraag 1x access zodat iOS labels vrijgeeft
+  try {
     const tmp = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio:false });
     stopTracks(tmp);
-  }catch(_){}
+  } catch(_){}
+
   const devices = await navigator.mediaDevices.enumerateDevices();
   const videoInputs = devices.filter(d => d.kind === 'videoinput');
 
@@ -163,37 +211,52 @@ async function populateCameras(preferBack = true){
   cameraSelect.disabled = videoInputs.length <= 1;
 }
 
-/* ===== Focus/kwaliteit (best effort) ===== */
+/* ====== Focus/kwaliteit (best effort, incl. dichtbij) ====== */
 async function applyQualityAndFocus(track){
   if (!track) return;
   try{
     const caps = track.getCapabilities ? track.getCapabilities() : {};
     const advanced = [];
+    // Continuous modes
     if (caps.focusMode && caps.focusMode.length) advanced.push({ focusMode:'continuous' });
     if (caps.exposureMode && caps.exposureMode.length) advanced.push({ exposureMode:'continuous' });
     if (caps.whiteBalanceMode && caps.whiteBalanceMode.length) advanced.push({ whiteBalanceMode:'continuous' });
+
+    // Dichtbij-focus (indien ondersteund)
+    if (caps.focusDistance && typeof caps.focusDistance.min === 'number'){
+      advanced.push({ focusDistance: caps.focusDistance.min }); // zo dichtbij mogelijk
+    }
+
+    // Een tikkie zoom kan dichtbij lezen helpen (indien ondersteund)
+    if (caps.zoom && typeof caps.zoom.min === 'number' && typeof caps.zoom.max === 'number'){
+      const target = Math.min(caps.zoom.max, (caps.zoom.min + caps.zoom.max)/2); // midden/veilig
+      advanced.push({ zoom: target });
+    }
 
     await track.applyConstraints(Object.assign({
       width:{ ideal:1920 }, height:{ ideal:1080 }, frameRate:{ ideal:30 }
     }, advanced.length ? { advanced } : {}));
 
+    // Torch tonen als het kan
     if (caps.torch){ torchBtn.classList.remove('hidden'); torchBtn.disabled = false; }
     else { torchBtn.classList.add('hidden'); }
     refocusBtn.disabled = false;
-  }catch(_){ refocusBtn.disabled = false; }
+  }catch(_){
+    refocusBtn.disabled = false; // niet fataal
+  }
 }
 
-/* ===== Start/Stop scanning ===== */
+/* ====== Start/Stop scannen (decodeFromConstraints) ====== */
 async function startScanning(){
   if (!isSecure){
-    setStatus('Open via https of localhost', '🔒');
-    alert('Open via https of http://localhost, anders blokkeert iPhone de camera.');
+    setStatus('Open via https', '🔒');
+    alert('Open via https (GitHub Pages is goed).');
     return;
   }
   try{
-    await showPermissionStatus();
     scanning = true; initAudio();
-    startStopBtn.textContent = '⏹️ Camera stoppen'; setStatus('Camera aan', '🟢');
+    startStopBtn.textContent = '⏹️ Camera stoppen';
+    setStatus('Camera aan', '🟢');
 
     await populateCameras(true);
 
@@ -210,27 +273,31 @@ async function startScanning(){
         const code = result.getText();
         const now = Date.now();
         if (!window.__lastAdded) window.__lastAdded = {text:'', ts:0};
-        const coolDownMs = 700;
+        const coolDownMs = 500; // korte cooldown om herhaalframes te filteren
         if (code !== window.__lastAdded.text || (now - window.__lastAdded.ts) > coolDownMs){
           outputEl.value = outputEl.value ? (outputEl.value + '\n' + code) : code;
           outputEl.scrollTop = outputEl.scrollHeight;
           window.__lastAdded = { text:code, ts:now };
           beep();
+          notifyOK(`Barcode ${code} gescand`);
         }
       }
     });
 
+    // Track ophalen en focus/kwaliteit toepassen
     const stream = videoEl.srcObject;
     activeTrack = stream && stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
     await applyQualityAndFocus(activeTrack);
+
+    // Tik op video = refocus (handig bij dichtbij)
+    videoEl.addEventListener('click', refocus);
+
   }catch(e){
     console.error(e);
     scanning = false;
     startStopBtn.textContent = '🎥 Camera starten';
     setStatus('Kon camera niet starten', '🔴');
-    // Toon hint om permissies te checken
-    document.getElementById('permNote').style.display = 'block';
-    alert('Camera start niet. Check: HTTPS, camera-toestemming (Instellingen → Safari/Chrome → Camera), en probeer opnieuw.');
+    alert('Camera start niet. Check: HTTPS en camera-toestemming in iOS instellingen.');
   }
 }
 
@@ -238,13 +305,14 @@ function stopScanning(){
   scanning = false;
   startStopBtn.textContent = '🎥 Camera starten';
   setStatus('Camera uit', '⏸️');
-  try{ reader.reset(); }catch(_){}
+  try { reader.reset(); } catch(_){}
   if (videoEl.srcObject) stopTracks(videoEl.srcObject);
   videoEl.srcObject = null;
   activeTrack = null; torchOn = false;
+  videoEl.removeEventListener('click', refocus);
 }
 
-/* ===== Torch & Refocus ===== */
+/* ====== Torch & Refocus ====== */
 async function toggleTorch(){
   if (!activeTrack) return;
   try{
@@ -258,32 +326,12 @@ async function toggleTorch(){
 async function refocus(){
   if (!activeTrack) return;
   await applyQualityAndFocus(activeTrack);
+  // mini feedback
   beep();
+  notifyOK('Scherpstelling bijgewerkt');
 }
 
-/* ===== Fallback: scan via foto ===== */
-async function decodeFile(file){
-  try{
-    const img = new Image();
-    img.onload = async () => {
-      try{
-        const res = await reader.decodeFromImage(img);
-        const code = res.getText();
-        outputEl.value = outputEl.value ? (outputEl.value + '\n' + code) : code;
-        outputEl.scrollTop = outputEl.scrollHeight;
-        beep();
-      }catch(err){
-        alert('Geen code gevonden in deze foto. Probeer een scherpere foto of een andere hoek.');
-      }
-    };
-    img.onerror = () => alert('Kon de afbeelding niet laden.');
-    img.src = URL.createObjectURL(file);
-  }catch(e){
-    alert('Fout bij foto-scan.');
-  }
-}
-
-/* ===== Events ===== */
+/* ====== UI events ====== */
 startStopBtn.addEventListener('click', () => { if (!scanning) startScanning(); else stopScanning(); });
 cameraSelect.addEventListener('change', async e => { currentDeviceId = e.target.value; if (scanning){ stopScanning(); startScanning(); } });
 copyBtn.addEventListener('click', async () => {
@@ -293,12 +341,7 @@ copyBtn.addEventListener('click', async () => {
 clearBtn.addEventListener('click', () => { outputEl.value=''; setStatus('Lijst geleegd', '🧹'); });
 torchBtn.addEventListener('click', toggleTorch);
 refocusBtn.addEventListener('click', refocus);
-fileInput.addEventListener('change', e => { const f = e.target.files?.[0]; if (f) decodeFile(f); });
-
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && scanning) setStatus('Camera aan', '🟢'); });
-
-/* Start: toon permissiestatus als hint */
-showPermissionStatus();
 </script>
 </body>
 </html>
