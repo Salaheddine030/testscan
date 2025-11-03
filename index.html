@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Barcode Scanner — iPhone (Live + Fallback)</title>
+<script src="https://unpkg.com/@zxing/library@0.20.0"></script>
+<style>
+  :root{--brand:#0d6efd;--brand-dark:#0a58ca;--bg:#f5f6f8;--ink:#1f2328;--muted:#6c757d;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Arial,sans-serif;}
+  header{background:var(--brand);color:#fff;padding:18px 20px;font-weight:700;font-size:22px;text-align:center;
+         box-shadow:0 2px 10px rgba(0,0,0,.12)}
+  main{width:min(900px,96vw);margin:20px auto;padding:16px;background:#fff;border-radius:16px;
+       box-shadow:0 6px 24px rgba(0,0,0,.08)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  select,button,input[type="file"]{border:1px solid #d0d7de;border-radius:12px;padding:12px 14px;font-size:16px;background:#fff;color:var(--ink)}
+  button{background:var(--brand);color:#fff;border:none;cursor:pointer;transition:.15s transform ease,.15s background-color ease}
+  button:hover{background:var(--brand-dark)} button:active{transform:translateY(1px)}
+  button.secondary{background:#fff;color:var(--ink);border:1px solid #d0d7de}
+  button.secondary:hover{background:#f3f4f6}
+  button.ghost{background:#fff;color:var(--ink);border:1px dashed #c8d0d8}
+  video{width:100%;aspect-ratio:3/4;background:#000;border-radius:16px;border:2px solid #e9ecef}
+  .hint{color:var(--muted);font-size:14px;margin:8px 0 4px}
+  textarea{width:100%;height:280px;margin-top:8px;padding:12px;font-size:16px;border:1px solid #d0d7de;border-radius:12px;resize:vertical}
+  footer{margin:14px 0 28px;color:var(--muted);font-size:14px;text-align:center}
+  .badge{display:inline-flex;align-items:center;gap:6px;background:#eef2ff;color:#3146b5;padding:6px 10px;border-radius:999px;
+         font-size:13px;border:1px solid #dfe6ff}
+  .warn{color:#b00020}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header>📸 Barcode Scanner — iPhone (Live + Fallback)</header>
+
+<main>
+  <div class="row">
+    <button id="startStopBtn">🎥 Camera starten</button>
+    <button id="refocusBtn" class="secondary" disabled>🔁 Refocus</button>
+    <button id="torchBtn" class="secondary hidden">🔦 Zaklamp</button>
+    <select id="cameraSelect" title="Kies camera" disabled></select>
+    <span class="badge" id="statusBadge">⏸️ Camera uit</span>
+  </div>
+
+  <div class="row">
+    <button id="copyBtn" class="secondary">📋 Alles kopiëren</button>
+    <button id="clearBtn" class="ghost">🧹 Wis alles</button>
+    <!-- Fallback: foto-scan -->
+    <label class="secondary" for="fileInput" style="cursor:pointer;">🖼️ Scan via foto</label>
+    <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden" />
+  </div>
+
+  <div id="secureNote" class="warn" style="display:none;margin-bottom:8px;">
+    ⚠️ iPhone blokkeert camera/geluid op onbeveiligde pagina’s. Open via <b>https</b> of <b>http://localhost</b>.
+  </div>
+  <div id="permNote" class="warn" style="display:none;margin-bottom:8px;">
+    ⚠️ Camera-toestemming is geweigerd. Ga naar <b>Instellingen → (Safari/Chrome) → Camera → Toestaan</b> en herlaad.
+  </div>
+
+  <video id="preview" autoplay playsinline muted></video>
+
+  <div class="hint">Gescannde codes (elke scan komt direct op een nieuwe regel):</div>
+  <textarea id="output" readonly placeholder="Voorbeeld:
+7653891663
+7762749962
+7663996188"></textarea>
+</main>
+
+<footer>Gemaakt door Salaheddine ©</footer>
+
+<script>
+const isSecure = location.protocol === 'https:' || ['localhost','127.0.0.1'].includes(location.hostname);
+document.getElementById('secureNote').style.display = isSecure ? 'none' : 'block';
+
+const formats = [
+  ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+  ZXing.BarcodeFormat.CODE_93, ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+  ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E, ZXing.BarcodeFormat.ITF,
+  ZXing.BarcodeFormat.CODABAR, ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.AZTEC,
+  ZXing.BarcodeFormat.PDF_417
+];
+const hints = new Map();
+hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+const reader = new ZXing.BrowserMultiFormatReader(hints);
+
+const videoEl = document.getElementById('preview');
+const outputEl = document.getElementById('output');
+const startStopBtn = document.getElementById('startStopBtn');
+const refocusBtn = document.getElementById('refocusBtn');
+const torchBtn = document.getElementById('torchBtn');
+const copyBtn = document.getElementById('copyBtn');
+const clearBtn = document.getElementById('clearBtn');
+const cameraSelect = document.getElementById('cameraSelect');
+const statusBadge = document.getElementById('statusBadge');
+const fileInput = document.getElementById('fileInput');
+
+let scanning = false;
+let currentDeviceId = null;
+let activeTrack = null;
+let torchOn = false;
+
+/* ===== Beep ===== */
+let audioCtx = null, canBeep = false;
+function initAudio(){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    canBeep = true;
+  }catch(e){ canBeep = false; }
+}
+function beep(){
+  if (!canBeep || !audioCtx) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = 'sine'; o.frequency.setValueAtTime(1100, audioCtx.currentTime);
+  g.gain.setValueAtTime(0.001, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.25, audioCtx.currentTime + 0.01);
+  o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.06);
+}
+
+/* ===== Helpers ===== */
+function setStatus(text, emoji='ℹ️'){ statusBadge.textContent = `${emoji} ${text}`; }
+function stopTracks(stream){ if (stream) stream.getTracks().forEach(t=>t.stop()); }
+
+/* ===== Permissie-status tonen (indien ondersteund) ===== */
+async function showPermissionStatus(){
+  const permNote = document.getElementById('permNote');
+  permNote.style.display = 'none';
+  try{
+    if (!('permissions' in navigator)) return;
+    const st = await navigator.permissions.query({ name:'camera' });
+    if (st.state === 'denied') permNote.style.display = 'block';
+    // als 'prompt' of 'granted', laten we het aan de start-knop over
+  }catch(_){}
+}
+
+/* ===== Camera’s ophalen + achtercamera prefereren ===== */
+async function populateCameras(preferBack = true){
+  try{
+    // vraag 1x access zodat iOS labels vrijgeeft
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio:false });
+    stopTracks(tmp);
+  }catch(_){}
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const videoInputs = devices.filter(d => d.kind === 'videoinput');
+
+  cameraSelect.innerHTML = '';
+  videoInputs.forEach((d, idx) => {
+    const opt = document.createElement('option');
+    opt.value = d.deviceId;
+    opt.textContent = d.label || `Camera ${idx+1}`;
+    cameraSelect.appendChild(opt);
+  });
+
+  let preferredId = videoInputs.length ? videoInputs[0].deviceId : null;
+  if (preferBack && videoInputs.length){
+    const backRegex = /(back|rear|environment|tele|wide|achter)/i;
+    const back = videoInputs.find(d => backRegex.test(d.label));
+    preferredId = back ? back.deviceId : videoInputs[videoInputs.length-1].deviceId;
+  }
+  currentDeviceId = preferredId;
+  if (preferredId) cameraSelect.value = preferredId;
+  cameraSelect.disabled = videoInputs.length <= 1;
+}
+
+/* ===== Focus/kwaliteit (best effort) ===== */
+async function applyQualityAndFocus(track){
+  if (!track) return;
+  try{
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    const advanced = [];
+    if (caps.focusMode && caps.focusMode.length) advanced.push({ focusMode:'continuous' });
+    if (caps.exposureMode && caps.exposureMode.length) advanced.push({ exposureMode:'continuous' });
+    if (caps.whiteBalanceMode && caps.whiteBalanceMode.length) advanced.push({ whiteBalanceMode:'continuous' });
+
+    await track.applyConstraints(Object.assign({
+      width:{ ideal:1920 }, height:{ ideal:1080 }, frameRate:{ ideal:30 }
+    }, advanced.length ? { advanced } : {}));
+
+    if (caps.torch){ torchBtn.classList.remove('hidden'); torchBtn.disabled = false; }
+    else { torchBtn.classList.add('hidden'); }
+    refocusBtn.disabled = false;
+  }catch(_){ refocusBtn.disabled = false; }
+}
+
+/* ===== Start/Stop scanning ===== */
+async function startScanning(){
+  if (!isSecure){
+    setStatus('Open via https of localhost', '🔒');
+    alert('Open via https of http://localhost, anders blokkeert iPhone de camera.');
+    return;
+  }
+  try{
+    await showPermissionStatus();
+    scanning = true; initAudio();
+    startStopBtn.textContent = '⏹️ Camera stoppen'; setStatus('Camera aan', '🟢');
+
+    await populateCameras(true);
+
+    await reader.decodeFromConstraints({
+      audio:false,
+      video:{
+        deviceId: currentDeviceId ? { exact: currentDeviceId } : undefined,
+        facingMode:{ ideal:'environment' },
+        width:{ ideal:1920 }, height:{ ideal:1080 }, frameRate:{ ideal:30 },
+        advanced:[ { focusMode:'continuous' }, { exposureMode:'continuous' }, { whiteBalanceMode:'continuous' } ]
+      }
+    }, videoEl, (result, err) => {
+      if (result){
+        const code = result.getText();
+        const now = Date.now();
+        if (!window.__lastAdded) window.__lastAdded = {text:'', ts:0};
+        const coolDownMs = 700;
+        if (code !== window.__lastAdded.text || (now - window.__lastAdded.ts) > coolDownMs){
+          outputEl.value = outputEl.value ? (outputEl.value + '\n' + code) : code;
+          outputEl.scrollTop = outputEl.scrollHeight;
+          window.__lastAdded = { text:code, ts:now };
+          beep();
+        }
+      }
+    });
+
+    const stream = videoEl.srcObject;
+    activeTrack = stream && stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
+    await applyQualityAndFocus(activeTrack);
+  }catch(e){
+    console.error(e);
+    scanning = false;
+    startStopBtn.textContent = '🎥 Camera starten';
+    setStatus('Kon camera niet starten', '🔴');
+    // Toon hint om permissies te checken
+    document.getElementById('permNote').style.display = 'block';
+    alert('Camera start niet. Check: HTTPS, camera-toestemming (Instellingen → Safari/Chrome → Camera), en probeer opnieuw.');
+  }
+}
+
+function stopScanning(){
+  scanning = false;
+  startStopBtn.textContent = '🎥 Camera starten';
+  setStatus('Camera uit', '⏸️');
+  try{ reader.reset(); }catch(_){}
+  if (videoEl.srcObject) stopTracks(videoEl.srcObject);
+  videoEl.srcObject = null;
+  activeTrack = null; torchOn = false;
+}
+
+/* ===== Torch & Refocus ===== */
+async function toggleTorch(){
+  if (!activeTrack) return;
+  try{
+    const caps = activeTrack.getCapabilities ? activeTrack.getCapabilities() : {};
+    if (!caps.torch) return;
+    torchOn = !torchOn;
+    await activeTrack.applyConstraints({ advanced:[{ torch: torchOn }] });
+    torchBtn.textContent = torchOn ? '🔦 Zaklamp uit' : '🔦 Zaklamp aan';
+  }catch(_){}
+}
+async function refocus(){
+  if (!activeTrack) return;
+  await applyQualityAndFocus(activeTrack);
+  beep();
+}
+
+/* ===== Fallback: scan via foto ===== */
+async function decodeFile(file){
+  try{
+    const img = new Image();
+    img.onload = async () => {
+      try{
+        const res = await reader.decodeFromImage(img);
+        const code = res.getText();
+        outputEl.value = outputEl.value ? (outputEl.value + '\n' + code) : code;
+        outputEl.scrollTop = outputEl.scrollHeight;
+        beep();
+      }catch(err){
+        alert('Geen code gevonden in deze foto. Probeer een scherpere foto of een andere hoek.');
+      }
+    };
+    img.onerror = () => alert('Kon de afbeelding niet laden.');
+    img.src = URL.createObjectURL(file);
+  }catch(e){
+    alert('Fout bij foto-scan.');
+  }
+}
+
+/* ===== Events ===== */
+startStopBtn.addEventListener('click', () => { if (!scanning) startScanning(); else stopScanning(); });
+cameraSelect.addEventListener('change', async e => { currentDeviceId = e.target.value; if (scanning){ stopScanning(); startScanning(); } });
+copyBtn.addEventListener('click', async () => {
+  try{ await navigator.clipboard.writeText(outputEl.value); setStatus('Gekopieerd naar klembord', '📋'); }
+  catch{ outputEl.select(); document.execCommand('copy'); setStatus('Gekopieerd (fallback)', '📋'); }
+});
+clearBtn.addEventListener('click', () => { outputEl.value=''; setStatus('Lijst geleegd', '🧹'); });
+torchBtn.addEventListener('click', toggleTorch);
+refocusBtn.addEventListener('click', refocus);
+fileInput.addEventListener('change', e => { const f = e.target.files?.[0]; if (f) decodeFile(f); });
+
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && scanning) setStatus('Camera aan', '🟢'); });
+
+/* Start: toon permissiestatus als hint */
+showPermissionStatus();
+</script>
+</body>
+</html>
