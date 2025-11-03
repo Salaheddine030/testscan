@@ -1,119 +1,294 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="nl" data-theme="light">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Barcode Scanner — iPhone Focus + Beep + Notifies</title>
+<title>Barcode Scanner — Pro (iPhone Focus • Beep • Notifies • Export)</title>
 <meta name="robots" content="noindex,nofollow" />
 <script src="https://unpkg.com/@zxing/library@0.20.0"></script>
 <style>
+  /* =========================
+     THEME & LAYOUT
+     ========================= */
   :root{
-    --brand:#0d6efd; --brand-dark:#0a58ca; --bg:#f5f6f8; --ink:#1f2328;
-    --muted:#6c757d; --ok:#16a34a; --ok-dark:#0e7a36;
+    --bg:#f5f6f8; --panel:#ffffff; --ink:#1f2328; --muted:#6c757d;
+    --brand:#0d6efd; --brand-2:#4f46e5; --brand-dark:#0a58ca;
+    --ok:#16a34a; --ok-2:#22c55e; --danger:#dc2626; --warn:#f59e0b;
+    --border:#d0d7de; --soft:#eef2f7; --chip:#eef2ff; --chip-ink:#3146b5;
+    --card-shadow:0 10px 30px rgba(0,0,0,.09);
+  }
+  [data-theme="dark"]{
+    --bg:#0b1220; --panel:#0f172a; --ink:#e8eefc; --muted:#96a0b5;
+    --brand:#3b82f6; --brand-2:#6366f1; --brand-dark:#2563eb;
+    --ok:#22c55e; --ok-2:#4ade80; --danger:#ef4444; --warn:#f59e0b;
+    --border:#25314a; --soft:#121a2d; --chip:#132040; --chip-ink:#7aa2ff;
+    --card-shadow:0 12px 36px rgba(0,0,0,.35);
   }
   *{box-sizing:border-box}
+  html,body{height:100%}
   body{
     margin:0; background:var(--bg); color:var(--ink);
-    font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Arial,sans-serif;
+    font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Inter,Roboto,Arial,sans-serif;
   }
   header{
-    background:var(--brand); color:#fff; padding:16px 20px; font-weight:700; font-size:20px;
-    text-align:center; box-shadow:0 2px 10px rgba(0,0,0,.12)
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:16px 24px; background:linear-gradient(90deg,var(--brand),var(--brand-2));
+    color:#fff; box-shadow:var(--card-shadow); position:sticky; top:0; z-index:40;
   }
-  main{
-    width:min(900px,96vw); margin:18px auto; padding:16px; background:#fff; border-radius:16px;
-    box-shadow:0 6px 24px rgba(0,0,0,.08)
+  header h1{ margin:0; font-size:20px; font-weight:800; letter-spacing:.2px }
+  header .actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap }
+  .container{
+    max-width:1200px; margin:18px auto; padding:0 16px 24px; display:grid; gap:16px;
+    grid-template-columns: 360px 1fr;
   }
-  .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px }
-  select,button{
-    border:1px solid #d0d7de; border-radius:12px; padding:10px 12px; font-size:16px; background:#fff; color:var(--ink)
+  .panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:16px;
+    box-shadow:var(--card-shadow);
+  }
+  .panel h2{
+    margin:0; padding:14px 16px; font-size:16px; font-weight:700; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .panel .body{ padding:14px 16px }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center }
+  .stack{ display:flex; flex-direction:column; gap:10px }
+  .split{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
+  .label{font-size:13px; color:var(--muted)}
+  .badge{ display:inline-flex; gap:6px; align-items:center; background:var(--chip); color:var(--chip-ink);
+    padding:6px 10px; border-radius:999px; border:1px solid color-mix(in oklab, var(--chip) 70%, #ffffff 30%) }
+  .muted{ color:var(--muted) }
+
+  /* Buttons & Inputs */
+  button, select, input, textarea{
+    border-radius:12px; font-size:15px; border:1px solid var(--border); background:#fff; color:var(--ink);
+    padding:10px 12px;
+  }
+  [data-theme="dark"] button,[data-theme="dark"] select,[data-theme="dark"] input,[data-theme="dark"] textarea{
+    background:#0b1326;
   }
   button{
-    background:var(--brand); color:#fff; border:none; cursor:pointer;
-    transition:.15s transform ease,.15s background-color ease
+    background:var(--brand); border:0; color:white; cursor:pointer; transition:.15s ease;
   }
-  button:hover{ background:var(--brand-dark) }
+  button:hover{ filter:brightness(.95) }
   button:active{ transform:translateY(1px) }
-  button.secondary{ background:#fff; color:var(--ink); border:1px solid #d0d7de }
-  button.secondary:hover{ background:#f3f4f6 }
-  button.ghost{ background:#fff; color:var(--ink); border:1px dashed #c8d0d8 }
-  .badge{ display:inline-flex; align-items:center; gap:6px; background:#eef2ff; color:#3146b5;
-    padding:6px 10px; border-radius:999px; font-size:13px; border:1px solid #dfe6ff }
+  .secondary{ background:transparent; color:var(--ink) }
+  .ghost{ border:1px dashed var(--border); background:transparent; color:var(--ink) }
+  .danger{ background:var(--danger) }
+  .ok{ background:var(--ok) }
+  .warn{ color:var(--warn) }
 
-  /* Cameravak: compacter en strak */
-  .camera-wrap{
-    width:100%; display:flex; justify-content:center; margin-top:6px;
-  }
+  /* Camera Card */
+  .camera-card .controls{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px }
+  .camera-wrap{ display:flex; justify-content:center; margin:6px 0 0 0 }
   video{
-    width:100%;
-    max-width:420px;           /* <<< kleiner cameravak */
-    aspect-ratio:3/4;
-    background:#000; border-radius:14px; border:2px solid #e9ecef;
+    width:100%; max-width:520px; aspect-ratio:3/4; background:#000; border-radius:14px; border:2px solid var(--border);
   }
+  .roi{
+    position:absolute; pointer-events:none; border:2px dashed rgba(255,255,255,.7); border-radius:10px;
+    width:68%; height:55%; top:50%; left:50%; transform:translate(-50%,-50%);
+    box-shadow:0 0 0 200vmax rgba(0,0,0,.16) inset;
+  }
+  .video-shell{ position:relative; width:100%; display:flex; justify-content:center }
+  .help{ font-size:13px; color:var(--muted); margin-top:6px }
 
-  .hint{ color:var(--muted); font-size:14px; margin:10px 0 6px }
-  textarea{
-    width:100%; height:260px; padding:12px; font-size:16px; border:1px solid #d0d7de;
-    border-radius:12px; resize:vertical
+  /* Data panels */
+  textarea{ width:100%; height:200px; resize:vertical }
+  table{ width:100%; border-collapse:collapse; font-size:14px }
+  th,td{ border-bottom:1px solid var(--border); padding:8px 6px; text-align:left; }
+  th{ position:sticky; top:0; background:var(--panel); z-index:1 }
+  .stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px }
+  .stat{
+    background:var(--soft); border:1px solid var(--border); border-radius:12px; padding:12px; text-align:center
   }
-  .warn{ color:#b00020; margin:6px 0 }
-  .hidden{ display:none }
+  .stat .big{ font-size:22px; font-weight:800 }
+  .hint{ font-size:13px; color:var(--muted) }
 
-  /* Groene toast rechtsboven */
-  .toast{
-    position:fixed; right:14px; top:14px; z-index:9999; display:flex; flex-direction:column; gap:8px;
-  }
+  /* Toasts */
+  .toast{ position:fixed; right:16px; top:16px; z-index:9999; display:flex; flex-direction:column; gap:8px }
   .toast .item{
-    background:var(--ok); color:#fff; padding:10px 12px; border-radius:12px;
-    box-shadow:0 6px 18px rgba(0,0,0,.12); transform:translateY(-8px); opacity:0;
-    animation:slideIn .18s ease-out forwards;
+    background:var(--ok); color:#fff; padding:10px 12px; border-radius:12px; box-shadow:var(--card-shadow);
+    transform:translateY(-8px); opacity:0; animation:toastIn .16s ease-out forwards;
   }
-  @keyframes slideIn{
-    to{ transform:translateY(0); opacity:1 }
+  @keyframes toastIn{ to{ transform:translateY(0); opacity:1 } }
+
+  /* Modal */
+  dialog{
+    width:min(700px,92vw); border:1px solid var(--border); border-radius:16px; padding:0; background:var(--panel);
+    color:var(--ink); box-shadow:var(--card-shadow);
+  }
+  dialog::backdrop{ background:rgba(0,0,0,.4) }
+  .modal-head{ padding:14px 16px; border-bottom:1px solid var(--border); font-weight:700 }
+  .modal-body{ padding:14px 16px; }
+  .modal-foot{ padding:12px 16px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px }
+  .kbd{
+    display:inline-block; padding:2px 6px; border-radius:6px; border:1px solid var(--border); background:var(--soft); font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px;
+  }
+
+  /* Responsive */
+  @media (max-width:980px){
+    .container{ grid-template-columns:1fr }
+    .stats{ grid-template-columns:repeat(2,1fr) }
   }
 </style>
 </head>
 <body>
-<header>📸 Barcode Scanner — Focus + Beep + Notifies</header>
+  <header>
+    <h1>📸 Barcode Scanner — Pro</h1>
+    <div class="actions">
+      <button id="btnHelp" class="secondary">❓ Help</button>
+      <button id="btnTheme" class="secondary">🌙 Dark</button>
+      <span class="badge" id="statusBadge">⏸️ Camera uit</span>
+    </div>
+  </header>
 
-<main>
-  <div class="row">
-    <button id="startStopBtn">🎥 Camera starten</button>
-    <button id="refocusBtn" class="secondary" disabled>🔁 Refocus</button>
-    <button id="torchBtn" class="secondary hidden">🔦 Zaklamp</button>
-    <select id="cameraSelect" title="Kies camera" disabled></select>
-    <span class="badge" id="statusBadge">⏸️ Camera uit</span>
+  <div class="container">
+    <!-- LEFT: CAMERA & SETTINGS -->
+    <section class="panel camera-card">
+      <h2>
+        Camera & Bediening
+        <span class="badge" id="badgeEnv">HTTPS vereist</span>
+      </h2>
+      <div class="body stack">
+        <div class="controls">
+          <button id="startStopBtn">🎥 Start camera</button>
+          <button id="refocusBtn" class="secondary" disabled>🔁 Refocus</button>
+          <button id="torchBtn" class="secondary" style="display:none">🔦 Zaklamp</button>
+          <button id="undoBtn" class="secondary" disabled>↩️ Undo</button>
+          <button id="clearBtn" class="ghost">🧹 Wis alles</button>
+        </div>
+
+        <div class="split">
+          <div class="stack">
+            <label class="label">Camera</label>
+            <select id="cameraSelect" disabled></select>
+          </div>
+          <div class="stack">
+            <label class="label">Resolutie (voorkeur)</label>
+            <select id="resolutionSelect">
+              <option value="hd">HD 1280×720</option>
+              <option value="fhd" selected>Full HD 1920×1080</option>
+              <option value="qhd">QHD 2560×1440</option>
+              <option value="uhd">UHD 3840×2160</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="video-shell">
+          <div class="camera-wrap">
+            <video id="preview" autoplay playsinline muted></video>
+          </div>
+          <div class="roi" id="roi"></div>
+        </div>
+        <div class="help" id="secureNote" style="display:none;">
+          ⚠️ Open via <b>https</b> (GitHub Pages is goed) en sta <b>camera</b> toe in iOS instellingen.
+        </div>
+
+        <div class="panel body" style="border:1px dashed var(--border); border-radius:12px;">
+          <div class="row">
+            <div class="stack" style="min-width:220px">
+              <label class="label">Debounce (ms) — filter dubbele frames</label>
+              <input id="debounce" type="range" min="0" max="1500" step="50" value="500"/>
+              <div class="hint"><span id="debounceVal">500</span> ms</div>
+            </div>
+            <div class="stack" style="min-width:220px">
+              <label class="label">Instellingen</label>
+              <div class="row">
+                <label><input type="checkbox" id="optSound" checked/> Geluid</label>
+                <label><input type="checkbox" id="optNoDupes"/> Geen duplicaten</label>
+                <label><input type="checkbox" id="optAutoscroll" checked/> Auto-scroll</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- RIGHT: DATA / STATS -->
+    <section class="panel">
+      <h2>Scans & Export <span id="sessionBadge" class="badge">Sessie actief</span></h2>
+      <div class="body stack">
+        <div class="stats">
+          <div class="stat"><div class="label">Totaal</div><div class="big" id="statTotal">0</div></div>
+          <div class="stat"><div class="label">Uniek</div><div class="big" id="statUnique">0</div></div>
+          <div class="stat"><div class="label">Laatste</div><div class="big" id="statLast">—</div></div>
+          <div class="stat"><div class="label">Looptijd</div><div class="big" id="statTime">00:00</div></div>
+        </div>
+
+        <div class="row">
+          <button id="copyTxt" class="secondary">📋 Kopieer (TXT)</button>
+          <button id="downloadTxt" class="secondary">⬇️ Download TXT</button>
+          <button id="downloadCsv" class="secondary">⬇️ Download CSV</button>
+          <button id="downloadJson" class="secondary">⬇️ Download JSON</button>
+          <label for="importFile" class="secondary" style="cursor:pointer;">⬆️ Import</label>
+          <input id="importFile" type="file" accept=".txt,.csv,.json" style="display:none" />
+        </div>
+
+        <div class="stack">
+          <label class="label">Ruwe lijst (copy/paste)</label>
+          <textarea id="output" readonly placeholder="Elke scan komt op een nieuwe regel…"></textarea>
+          <div class="hint">Tip: je kunt alles hier in één keer kopiëren en plakken in Word/Excel.</div>
+        </div>
+
+        <div class="stack">
+          <label class="label">Tabel (met tijd & type)</label>
+          <div style="max-height:260px; overflow:auto; border:1px solid var(--border); border-radius:12px;">
+            <table id="grid">
+              <thead><tr><th>#</th><th>Barcode</th><th>Type</th><th>Tijd</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </section>
   </div>
 
-  <div id="secureNote" class="warn" style="display:none;">
-    ⚠️ iPhone blokkeert camera/geluid op onbeveiligde pagina’s. Open via <b>https</b>.
-  </div>
+  <!-- TOASTS -->
+  <div class="toast" id="toast"></div>
 
-  <div class="camera-wrap">
-    <video id="preview" autoplay playsinline muted></video>
-  </div>
-
-  <div class="row" style="margin-top:10px;">
-    <button id="copyBtn" class="secondary">📋 Alles kopiëren</button>
-    <button id="clearBtn" class="ghost">🧹 Wis alles</button>
-  </div>
-
-  <div class="hint">Gescannde codes (elke scan komt direct op een nieuwe regel):</div>
-  <textarea id="output" readonly placeholder="Voorbeeld:
-7653891663
-7762749962
-7663996188"></textarea>
-</main>
-
-<!-- Scan-notificaties -->
-<div class="toast" id="toast"></div>
+  <!-- HELP MODAL -->
+  <dialog id="dlgHelp">
+    <div class="modal-head">Help & Sneltoetsen</div>
+    <div class="modal-body stack">
+      <div><b>iPhone camera werkt niet?</b>
+        <ul>
+          <li>Open de site via <b>HTTPS</b> (GitHub Pages is prima).</li>
+          <li>Sta camera toe: <i>Instellingen → Safari/Chrome → Camera → Toestaan</i>.</li>
+          <li>Zet stille modus uit als je de <b>piep</b> wilt horen.</li>
+        </ul>
+      </div>
+      <div><b>Sneltoetsen</b>
+        <ul>
+          <li><span class="kbd">S</span> Start/Stop camera</li>
+          <li><span class="kbd">R</span> Refocus</li>
+          <li><span class="kbd">T</span> Zaklamp aan/uit (indien ondersteund)</li>
+          <li><span class="kbd">U</span> Undo laatste scan</li>
+          <li><span class="kbd">C</span> Kopieer TXT</li>
+          <li><span class="kbd">D</span> Wis alles</li>
+        </ul>
+      </div>
+      <div class="hint">Data wordt lokaal opgeslagen (LocalStorage) en hersteld bij het openen.</div>
+    </div>
+    <div class="modal-foot">
+      <button id="btnHelpClose" class="secondary">Sluiten</button>
+    </div>
+  </dialog>
 
 <script>
-/* ====== Secure context check ====== */
+/* =========================
+   ENVIRONMENT & ZXING
+   ========================= */
 const isSecure = location.protocol === 'https:' || ['localhost','127.0.0.1'].includes(location.hostname);
-document.getElementById('secureNote').style.display = isSecure ? 'none' : 'block';
+const $ = (q)=>document.querySelector(q);
+const $$ = (q)=>document.querySelectorAll(q);
 
-/* ====== ZXing setup (alle gewenste formaten) ====== */
+const statusBadge = $('#statusBadge');
+const secureNote = $('#secureNote');
+const badgeEnv = $('#badgeEnv');
+secureNote.style.display = isSecure ? 'none' : 'block';
+badgeEnv.textContent = isSecure ? 'HTTPS ✔' : 'HTTPS vereist';
+
 const formats = [
   ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
   ZXing.BarcodeFormat.CODE_93, ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
@@ -125,26 +300,78 @@ const hints = new Map();
 hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
 const reader = new ZXing.BrowserMultiFormatReader(hints);
 
-/* ====== UI refs ====== */
-const videoEl = document.getElementById('preview');
-const outputEl = document.getElementById('output');
-const startStopBtn = document.getElementById('startStopBtn');
-const refocusBtn = document.getElementById('refocusBtn');
-const torchBtn = document.getElementById('torchBtn');
-const copyBtn = document.getElementById('copyBtn');
-const clearBtn = document.getElementById('clearBtn');
-const cameraSelect = document.getElementById('cameraSelect');
-const statusBadge = document.getElementById('statusBadge');
-const toast = document.getElementById('toast');
+/* =========================
+   UI ELEMENTS
+   ========================= */
+const videoEl = $('#preview');
+const roiEl = $('#roi');
+const startStopBtn = $('#startStopBtn');
+const refocusBtn = $('#refocusBtn');
+const torchBtn = $('#torchBtn');
+const cameraSelect = $('#cameraSelect');
+const resSelect = $('#resolutionSelect');
+const outputEl = $('#output');
+const undoBtn = $('#undoBtn');
+const clearBtn = $('#clearBtn');
+const copyTxtBtn = $('#copyTxt');
+const downloadTxtBtn = $('#downloadTxt');
+const downloadCsvBtn = $('#downloadCsv');
+const downloadJsonBtn = $('#downloadJson');
+const importFile = $('#importFile');
+const toast = $('#toast');
+const btnHelp = $('#btnHelp');
+const dlgHelp = $('#dlgHelp');
+const btnHelpClose = $('#btnHelpClose');
+const btnTheme = $('#btnTheme');
 
-/* ====== State ====== */
+const statTotal = $('#statTotal');
+const statUnique = $('#statUnique');
+const statLast = $('#statLast');
+const statTime = $('#statTime');
+const sessionBadge = $('#sessionBadge');
+
+const debounceRange = $('#debounce');
+const debounceVal = $('#debounceVal');
+const optSound = $('#optSound');
+const optNoDupes = $('#optNoDupes');
+const optAutoscroll = $('#optAutoscroll');
+
+const gridBody = $('#grid tbody');
+
+/* =========================
+   STATE
+   ========================= */
 let scanning = false;
 let currentDeviceId = null;
 let activeTrack = null;
 let torchOn = false;
 
-/* ====== Beep (kort, “scanner” achtig) ====== */
 let audioCtx = null, canBeep = false;
+
+let scans = []; // {code, format, ts}
+let lastAdded = { text:'', ts:0 };
+let startTs = null;
+
+let settings = {
+  debounce: 500,
+  sound: true,
+  noDupes: false,
+  autoscroll: true,
+  theme: (localStorage.getItem('barcode.theme') || 'light')
+};
+
+/* =========================
+   THEME
+   ========================= */
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', settings.theme);
+  btnTheme.textContent = settings.theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+}
+applyTheme();
+
+/* =========================
+   AUDIO (BEEP)
+   ========================= */
 function initAudio(){
   try{
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -153,7 +380,7 @@ function initAudio(){
   }catch(e){ canBeep = false; }
 }
 function beep(){
-  if (!canBeep || !audioCtx) return;
+  if (!settings.sound || !canBeep || !audioCtx) return;
   const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
   osc.type = 'square';
   osc.frequency.setValueAtTime(1250, audioCtx.currentTime);
@@ -163,7 +390,9 @@ function beep(){
   osc.start(); osc.stop(audioCtx.currentTime + 0.08);
 }
 
-/* ====== Notify (groene toast) ====== */
+/* =========================
+   TOAST / NOTIFY
+   ========================= */
 function notifyOK(msg){
   const el = document.createElement('div');
   el.className = 'item';
@@ -171,23 +400,34 @@ function notifyOK(msg){
   toast.appendChild(el);
   setTimeout(() => {
     el.style.transition = 'opacity .2s ease, transform .2s ease';
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(-8px)';
+    el.style.opacity = '0'; el.style.transform = 'translateY(-8px)';
     setTimeout(() => toast.removeChild(el), 220);
-  }, 1200);
+  }, 1400);
 }
 
-/* ====== Helpers ====== */
+/* =========================
+   HELPERS
+   ========================= */
 function setStatus(text, emoji='ℹ️'){ statusBadge.textContent = `${emoji} ${text}`; }
 function stopTracks(stream){ if (stream) stream.getTracks().forEach(t=>t.stop()); }
+function fmtTime(ts){
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+}
+function dl(filename, text){
+  const blob = new Blob([text], {type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+  URL.revokeObjectURL(a.href);
+}
 
-/* ====== Camera’s ophalen + achtercamera prefereren ====== */
+/* =========================
+   CAMERA PICK & RESOLUTION
+   ========================= */
 async function populateCameras(preferBack = true){
-  // vraag 1x access zodat iOS labels vrijgeeft
-  try {
-    const tmp = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio:false });
+  try{
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal:'environment' } }, audio:false });
     stopTracks(tmp);
-  } catch(_){}
+  }catch(_){}
 
   const devices = await navigator.mediaDevices.enumerateDevices();
   const videoInputs = devices.filter(d => d.kind === 'videoinput');
@@ -211,99 +451,120 @@ async function populateCameras(preferBack = true){
   cameraSelect.disabled = videoInputs.length <= 1;
 }
 
-/* ====== Focus/kwaliteit (best effort, incl. dichtbij) ====== */
+function resPreset(){
+  switch(resSelect.value){
+    case 'hd': return { width:{ideal:1280}, height:{ideal:720}, frameRate:{ideal:30} };
+    case 'fhd': return { width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:30} };
+    case 'qhd': return { width:{ideal:2560}, height:{ideal:1440}, frameRate:{ideal:30} };
+    case 'uhd': return { width:{ideal:3840}, height:{ideal:2160}, frameRate:{ideal:30} };
+  }
+}
+
+/* =========================
+   FOCUS / QUALITY
+   ========================= */
 async function applyQualityAndFocus(track){
   if (!track) return;
   try{
     const caps = track.getCapabilities ? track.getCapabilities() : {};
     const advanced = [];
-    // Continuous modes
     if (caps.focusMode && caps.focusMode.length) advanced.push({ focusMode:'continuous' });
     if (caps.exposureMode && caps.exposureMode.length) advanced.push({ exposureMode:'continuous' });
     if (caps.whiteBalanceMode && caps.whiteBalanceMode.length) advanced.push({ whiteBalanceMode:'continuous' });
 
-    // Dichtbij-focus (indien ondersteund)
+    // Close-focus if available
     if (caps.focusDistance && typeof caps.focusDistance.min === 'number'){
-      advanced.push({ focusDistance: caps.focusDistance.min }); // zo dichtbij mogelijk
+      advanced.push({ focusDistance: caps.focusDistance.min });
     }
-
-    // Een tikkie zoom kan dichtbij lezen helpen (indien ondersteund)
-    if (caps.zoom && typeof caps.zoom.min === 'number' && typeof caps.zoom.max === 'number'){
-      const target = Math.min(caps.zoom.max, (caps.zoom.min + caps.zoom.max)/2); // midden/veilig
-      advanced.push({ zoom: target });
+    // Slight zoom to help small barcodes
+    if (caps.zoom && typeof caps.zoom.max === 'number'){
+      const mid = Math.min(caps.zoom.max, Math.max(caps.zoom.min || 1, (caps.zoom.max*0.35)));
+      advanced.push({ zoom: mid });
     }
+    const base = Object.assign({}, resPreset());
+    await track.applyConstraints(Object.assign(base, advanced.length ? { advanced } : {}));
 
-    await track.applyConstraints(Object.assign({
-      width:{ ideal:1920 }, height:{ ideal:1080 }, frameRate:{ ideal:30 }
-    }, advanced.length ? { advanced } : {}));
-
-    // Torch tonen als het kan
-    if (caps.torch){ torchBtn.classList.remove('hidden'); torchBtn.disabled = false; }
-    else { torchBtn.classList.add('hidden'); }
+    if (caps.torch){ torchBtn.style.display = ''; torchBtn.disabled = false; }
+    else { torchBtn.style.display = 'none'; }
     refocusBtn.disabled = false;
   }catch(_){
-    refocusBtn.disabled = false; // niet fataal
+    refocusBtn.disabled = false;
   }
 }
 
-/* ====== Start/Stop scannen (decodeFromConstraints) ====== */
+/* =========================
+   START / STOP SCANNING
+   ========================= */
 async function startScanning(){
   if (!isSecure){
-    setStatus('Open via https', '🔒');
-    alert('Open via https (GitHub Pages is goed).');
+    setStatus('Open via https', '🔒'); alert('Open via https (GitHub Pages is goed).');
     return;
   }
   try{
     scanning = true; initAudio();
-    startStopBtn.textContent = '⏹️ Camera stoppen';
+    startStopBtn.textContent = '⏹️ Stop camera';
     setStatus('Camera aan', '🟢');
+    sessionBadge.textContent = 'Sessie actief';
 
     await populateCameras(true);
 
-    await reader.decodeFromConstraints({
+    const constraints = {
       audio:false,
-      video:{
+      video:Object.assign({
         deviceId: currentDeviceId ? { exact: currentDeviceId } : undefined,
-        facingMode:{ ideal:'environment' },
-        width:{ ideal:1920 }, height:{ ideal:1080 }, frameRate:{ ideal:30 },
-        advanced:[ { focusMode:'continuous' }, { exposureMode:'continuous' }, { whiteBalanceMode:'continuous' } ]
-      }
-    }, videoEl, (result, err) => {
+        facingMode:{ ideal:'environment' }
+      }, resPreset(), { advanced:[ { focusMode:'continuous' }, { exposureMode:'continuous' }, { whiteBalanceMode:'continuous' } ] })
+    };
+
+    await reader.decodeFromConstraints(constraints, videoEl, (result, err) => {
       if (result){
         const code = result.getText();
+        const fmt = result.getBarcodeFormat ? String(result.getBarcodeFormat()) : '—';
         const now = Date.now();
-        if (!window.__lastAdded) window.__lastAdded = {text:'', ts:0};
-        const coolDownMs = 500; // korte cooldown om herhaalframes te filteren
-        if (code !== window.__lastAdded.text || (now - window.__lastAdded.ts) > coolDownMs){
-          outputEl.value = outputEl.value ? (outputEl.value + '\n' + code) : code;
-          outputEl.scrollTop = outputEl.scrollHeight;
-          window.__lastAdded = { text:code, ts:now };
-          beep();
-          notifyOK(`Barcode ${code} gescand`);
-        }
+
+        // Debounce
+        if (settings.noDupes && scans.some(s => s.code===code)) return;
+        if (!lastAdded.ts) lastAdded.ts = 0;
+        if (code === lastAdded.text && (now - lastAdded.ts) < settings.debounce) return;
+
+        // Commit scan
+        const rec = {code, format:fmt, ts:now};
+        scans.push(rec);
+        lastAdded = {text:code, ts:now};
+        if (outputEl.value) outputEl.value += '\n' + code; else outputEl.value = code;
+        addRow(rec);
+        updateStats();
+        persist();
+
+        if (settings.autoscroll){ outputEl.scrollTop = outputEl.scrollHeight; document.querySelector('#grid').parentElement.scrollTop = 999999; }
+
+        beep();
+        notifyOK(`Barcode ${code} gescand`);
+        statLast.textContent = code;
       }
     });
 
-    // Track ophalen en focus/kwaliteit toepassen
     const stream = videoEl.srcObject;
     activeTrack = stream && stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
     await applyQualityAndFocus(activeTrack);
 
-    // Tik op video = refocus (handig bij dichtbij)
+    // Tap-to-refocus
     videoEl.addEventListener('click', refocus);
+
+    undoBtn.disabled = scans.length === 0;
+    if (!startTs) { startTs = Date.now(); tickUptime(); }
 
   }catch(e){
     console.error(e);
     scanning = false;
-    startStopBtn.textContent = '🎥 Camera starten';
+    startStopBtn.textContent = '🎥 Start camera';
     setStatus('Kon camera niet starten', '🔴');
-    alert('Camera start niet. Check: HTTPS en camera-toestemming in iOS instellingen.');
+    alert('Camera start niet. Controleer HTTPS + camera-toestemming.');
   }
 }
-
 function stopScanning(){
   scanning = false;
-  startStopBtn.textContent = '🎥 Camera starten';
+  startStopBtn.textContent = '🎥 Start camera';
   setStatus('Camera uit', '⏸️');
   try { reader.reset(); } catch(_){}
   if (videoEl.srcObject) stopTracks(videoEl.srcObject);
@@ -312,7 +573,87 @@ function stopScanning(){
   videoEl.removeEventListener('click', refocus);
 }
 
-/* ====== Torch & Refocus ====== */
+/* =========================
+   GRID / STATS / STORAGE
+   ========================= */
+function addRow({code, format, ts}){
+  const idx = scans.length;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${idx}</td><td>${escapeHtml(code)}</td><td>${escapeHtml(format)}</td><td>${fmtTime(ts)}</td>`;
+  gridBody.appendChild(tr);
+}
+function rebuildGrid(){
+  gridBody.innerHTML = '';
+  scans.forEach(addRow);
+}
+function updateStats(){
+  statTotal.textContent = String(scans.length);
+  statUnique.textContent = String(new Set(scans.map(s=>s.code)).size);
+  statLast.textContent = scans.length ? scans[scans.length-1].code : '—';
+}
+function persist(){
+  const data = { scans, settings, startTs };
+  localStorage.setItem('barcode.data', JSON.stringify(data));
+}
+function restore(){
+  const raw = localStorage.getItem('barcode.data');
+  if (!raw) return;
+  try{
+    const data = JSON.parse(raw);
+    scans = data.scans || [];
+    settings = Object.assign(settings, data.settings||{});
+    startTs = data.startTs || null;
+
+    // apply settings UI
+    debounceRange.value = settings.debounce;
+    debounceVal.textContent = settings.debounce;
+    optSound.checked = settings.sound;
+    optNoDupes.checked = settings.noDupes;
+    optAutoscroll.checked = settings.autoscroll;
+    document.documentElement.setAttribute('data-theme', settings.theme);
+    btnTheme.textContent = settings.theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+
+    // build views
+    outputEl.value = scans.map(s=>s.code).join('\n');
+    rebuildGrid();
+    updateStats();
+    undoBtn.disabled = scans.length === 0;
+    if (startTs) tickUptime();
+  }catch(_){}
+}
+function clearAll(){
+  scans = [];
+  outputEl.value = '';
+  gridBody.innerHTML = '';
+  updateStats();
+  persist();
+  undoBtn.disabled = true;
+  statLast.textContent = '—';
+}
+function undo(){
+  const rec = scans.pop();
+  if (!rec) return;
+  // remove last line from textarea
+  const lines = outputEl.value.split('\n'); lines.pop(); outputEl.value = lines.join('\n');
+  // remove grid last row
+  if (gridBody.lastChild) gridBody.removeChild(gridBody.lastChild);
+  updateStats(); persist();
+  undoBtn.disabled = scans.length === 0;
+}
+function tickUptime(){
+  if (!startTs) return;
+  const d = Date.now() - startTs;
+  const s = Math.floor(d/1000);
+  const mm = String(Math.floor(s/60)).padStart(2,'0');
+  const ss = String(s%60).padStart(2,'0');
+  statTime.textContent = `${mm}:${ss}`;
+  requestAnimationFrame(tickUptime);
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+/* =========================
+   TORCH & REFOCUS
+   ========================= */
 async function toggleTorch(){
   if (!activeTrack) return;
   try{
@@ -326,22 +667,118 @@ async function toggleTorch(){
 async function refocus(){
   if (!activeTrack) return;
   await applyQualityAndFocus(activeTrack);
-  // mini feedback
-  beep();
+  if (settings.sound) beep();
   notifyOK('Scherpstelling bijgewerkt');
 }
 
-/* ====== UI events ====== */
-startStopBtn.addEventListener('click', () => { if (!scanning) startScanning(); else stopScanning(); });
-cameraSelect.addEventListener('change', async e => { currentDeviceId = e.target.value; if (scanning){ stopScanning(); startScanning(); } });
-copyBtn.addEventListener('click', async () => {
-  try{ await navigator.clipboard.writeText(outputEl.value); setStatus('Gekopieerd naar klembord', '📋'); }
+/* =========================
+   IMPORT / EXPORT
+   ========================= */
+async function copyTxt(){
+  try{ await navigator.clipboard.writeText(outputEl.value); setStatus('Gekopieerd', '📋'); }
   catch{ outputEl.select(); document.execCommand('copy'); setStatus('Gekopieerd (fallback)', '📋'); }
-});
-clearBtn.addEventListener('click', () => { outputEl.value=''; setStatus('Lijst geleegd', '🧹'); });
-torchBtn.addEventListener('click', toggleTorch);
+}
+function toCSV(){
+  const rows = [['index','barcode','type','time']].concat(scans.map((s,i)=>[i,s.code,s.format,fmtTime(s.ts)]));
+  return rows.map(r=>r.map(x=>/[,\"\n]/.test(String(x))?`"${String(x).replace(/"/g,'""')}"`:x).join(',')).join('\n');
+}
+function toJSON(){ return JSON.stringify(scans, null, 2); }
+
+function importData(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const text = reader.result;
+      if (file.name.endsWith('.json')){
+        const arr = JSON.parse(text);
+        if (!Array.isArray(arr)) throw new Error('Invalid JSON');
+        arr.forEach(o => {
+          const rec = { code:String(o.code||o), format:String(o.format||'—'), ts: Number(o.ts||Date.now()) };
+          scans.push(rec);
+        });
+      }else if (file.name.endsWith('.csv')){
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        const hdr = lines.shift();
+        lines.forEach((ln,i)=>{
+          const cols = ln.split(','); // naive parse OK for simple data
+          const code = (cols[1]||'').replace(/^"|"$/g,'').replace(/""/g,'"');
+          const fmt  = (cols[2]||'—').replace(/^"|"$/g,'').replace(/""/g,'"');
+          const time = Date.now(); // keep now
+          scans.push({code, format:fmt, ts:time});
+        });
+      }else{
+        // txt: one per line
+        text.split(/\r?\n/).forEach(line=>{
+          const v = line.trim(); if (!v) return;
+          scans.push({code:v, format:'—', ts:Date.now()});
+        });
+      }
+      outputEl.value = scans.map(s=>s.code).join('\n');
+      rebuildGrid(); updateStats(); persist();
+      undoBtn.disabled = scans.length === 0;
+      notifyOK('Import gereed');
+    }catch(e){ alert('Import mislukt: ' + e.message); }
+  };
+  reader.readAsText(file);
+}
+
+/* =========================
+   EVENTS
+   ========================= */
+startStopBtn.addEventListener('click', () => { if (!scanning) startScanning(); else stopScanning(); });
 refocusBtn.addEventListener('click', refocus);
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && scanning) setStatus('Camera aan', '🟢'); });
+torchBtn.addEventListener('click', toggleTorch);
+cameraSelect.addEventListener('change', e => { currentDeviceId = e.target.value; if (scanning){ stopScanning(); startScanning(); } });
+resSelect.addEventListener('change', () => { if (scanning){ stopScanning(); startScanning(); } });
+
+undoBtn.addEventListener('click', undo);
+clearBtn.addEventListener('click', () => { if (confirm('Alles wissen?')) clearAll(); });
+
+copyTxtBtn.addEventListener('click', copyTxt);
+downloadTxtBtn.addEventListener('click', () => dl('barcodes.txt', outputEl.value));
+downloadCsvBtn.addEventListener('click', () => dl('barcodes.csv', toCSV()));
+downloadJsonBtn.addEventListener('click', () => dl('barcodes.json', toJSON()));
+importFile.addEventListener('change', e => { const f = e.target.files?.[0]; if (f) importData(f); e.target.value=''; });
+
+debounceRange.addEventListener('input', e => { settings.debounce = Number(e.target.value); debounceVal.textContent = settings.debounce; persist(); });
+optSound.addEventListener('change', e => { settings.sound = e.target.checked; persist(); });
+optNoDupes.addEventListener('change', e => { settings.noDupes = e.target.checked; persist(); });
+optAutoscroll.addEventListener('change', e => { settings.autoscroll = e.target.checked; persist(); });
+
+btnHelp.addEventListener('click', () => dlgHelp.showModal());
+btnHelpClose.addEventListener('click', () => dlgHelp.close());
+btnTheme.addEventListener('click', () => {
+  settings.theme = settings.theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('barcode.theme', settings.theme);
+  applyTheme();
+});
+
+/* Keyboard shortcuts */
+document.addEventListener('keydown', (e) => {
+  if (e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k==='s'){ startStopBtn.click(); }
+  else if (k==='r'){ refocusBtn.click(); }
+  else if (k==='t'){ torchBtn.click(); }
+  else if (k==='u'){ undoBtn.click(); }
+  else if (k==='c'){ copyTxtBtn.click(); }
+  else if (k==='d'){ clearBtn.click(); }
+});
+
+/* UPTIME TICK */
+function startTimerIfNeeded(){ if (!startTs){ startTs = Date.now(); tickUptime(); persist(); }}
+
+/* Restore data on load */
+restore();
+
+/* Start hint */
+if (!isSecure){ secureNote.style.display='block'; }
+
+/* Start session timer if we already had scans */
+if (scans.length && !startTs){ startTimerIfNeeded(); }
+
+/* Accessibility: ROI hint on hover */
+roiEl.title = 'Richt de barcode binnen dit kader voor de beste herkenning';
 </script>
 </body>
 </html>
